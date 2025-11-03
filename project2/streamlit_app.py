@@ -1,3 +1,5 @@
+
+import os
 import streamlit as st
 import torch
 import torch.nn as nn
@@ -33,19 +35,27 @@ class BetterNet(nn.Module):
         return x
 
 # ===============================
-# 2️⃣ Загрузка модели
+# 2️⃣ Загрузка модели с защитой от ошибок
 # ===============================
 @st.cache_resource
 def load_model():
     model = BetterNet()
-    model.load_state_dict(torch.load("improved_cifar10.pth", map_location=torch.device("cpu")))
-    model.eval()
+    
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(base_path, "improved_cifar10.pth")
+
+    if not os.path.exists(model_path):
+        st.error(f"❌ Файл модели не найден по пути: {model_path}")
+    else:
+        model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
+        model.eval()
+    
     return model
 
 model = load_model()
 
 # ===============================
-# 3️⃣ Настройка интерфейса
+# 3️⃣ Интерфейс Streamlit
 # ===============================
 st.title("🧠 Классификация изображений CIFAR-10")
 st.write("Загрузите изображение (32x32 или больше), и модель определит, к какому классу оно относится.")
@@ -56,7 +66,7 @@ classes = ['plane', 'car', 'bird', 'cat', 'deer',
 uploaded_file = st.file_uploader("📁 Загрузите изображение...", type=["jpg", "jpeg", "png"])
 
 # ===============================
-# 4️⃣ Обработка и предсказание
+# 4️⃣ Предсказание
 # ===============================
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
@@ -68,8 +78,7 @@ if uploaded_file is not None:
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    img_t = transform(image)
-    img_t = img_t.unsqueeze(0)  # добавляем batch dimension
+    img_t = transform(image).unsqueeze(0)
 
     with torch.no_grad():
         outputs = model(img_t)
